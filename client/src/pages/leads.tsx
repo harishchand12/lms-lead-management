@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, MoreHorizontal, Calendar, FileDown, Upload, Flame, Thermometer, Snowflake, Info, Loader2, Pencil, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Calendar, FileDown, Upload, Flame, Thermometer, Snowflake, Info, Loader2, Pencil, Trash2, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -221,6 +221,19 @@ export default function LeadsPage() {
     });
   }, [searchTerm, statusFilter, followupFilter, selectedDate, currentUser, allLeads, followupSortOrder]);
 
+  const overdueCount = useMemo(() => {
+    const today = startOfDay(new Date());
+    let filteredLeads = allLeads;
+    if (currentUser?.role === 'agent') {
+      filteredLeads = allLeads.filter(l => l.ownerId === currentUser.id);
+    }
+    return filteredLeads.filter(lead => {
+      if (!lead.nextFollowup) return false;
+      const followupDate = startOfDay(new Date(lead.nextFollowup));
+      return followupDate < today;
+    }).length;
+  }, [allLeads, currentUser]);
+
   const handleAddLead = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -378,15 +391,33 @@ export default function LeadsPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {currentUser?.role === 'agent' ? "My Leads" : "All Leads"}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {currentUser?.role === 'agent' 
-              ? `Manage your assigned opportunities and follow-ups.` 
-              : "Track all company leads and pipeline status."}
-          </p>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {currentUser?.role === 'agent' ? "My Leads" : "All Leads"}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {currentUser?.role === 'agent' 
+                ? `Manage your assigned opportunities and follow-ups.` 
+                : "Track all company leads and pipeline status."}
+            </p>
+          </div>
+          {overdueCount > 0 && (
+            <div 
+              className="flex items-center gap-2 px-4 py-2 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-md"
+              data-testid="overdue-followup-indicator"
+            >
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+              <div>
+                <span className="text-sm font-semibold text-red-700 dark:text-red-300">
+                  {overdueCount} Overdue
+                </span>
+                <span className="text-xs text-red-600 dark:text-red-400 ml-1">
+                  Follow-up{overdueCount > 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" className="gap-2" onClick={downloadSampleTemplate} data-testid="button-download-template">
